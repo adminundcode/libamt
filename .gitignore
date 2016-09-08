@@ -1,0 +1,5 @@
+*.o
+amttest
+libamt.so*
+build/
+SyncLib/
