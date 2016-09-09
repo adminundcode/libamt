@@ -3,3 +3,5 @@ amttest
 libamt.so*
 build/
 SyncLib/
+intel/
+mof/
