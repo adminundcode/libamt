@@ -40,14 +40,13 @@ You will have
 Because we will patch some of them, you need to copy the source
 file of the AMD SDK.
 
-    $ cd libamt
-    $ cp -r ../sdk/Windows/Common/SyncLib/Include SyncLib
-    $ cp -r ../sdk/Windows/Common/SyncLib/src SyncLib
-
+This is done by the copy_files.sh shell scirpt.
 
 ## Install dependencies
 
 Along the normal C++ compiler, you we use the system libwsman and 
 libxerces packages.
 
-apt-get install libopenwsman-dev libxerces-c-dev
+apt-get install libopenwsman-dev libwsman-clientpp-dev libxerces-c-dev
+
+

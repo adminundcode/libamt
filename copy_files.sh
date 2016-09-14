@@ -7,7 +7,7 @@ cp -r $sdkpath/Windows/Common/SyncLib/Include SyncLib
 cp -r $sdkpath/Windows/Common/SyncLib/src SyncLib
 mkdir intel
 mkdir intel/src
-mkdir intel/intel
+mkdir intel/include
 cp ../sdk/Windows/Common/WS-Management/C++/CimFramework/include/*.h intel/include/
 cp ../sdk/Windows/Common/WS-Management/C++/CimFramework/src/*.cpp intel/src/
 cp ../sdk/Windows/Common/WS-Management/C++/CimFrameworkUntyped/include/*.h intel/include/
@@ -19,7 +19,7 @@ cp ../sdk/Windows/Common/WS-Management/C++/CimFramework/CPPClasses/Include/*.h m
 cp ../sdk/Windows/Common/WS-Management/C++/CimFramework/CPPClasses/Src/*.cpp mof/src/
 cp ../sdk/Windows/Common/WS-Management/C++/CimOpenWsmanClient/CimOpenWsmanClient.h intel/include/
 cp ../sdk/Windows/Common/WS-Management/C++/CimOpenWsmanClient/CimOpenWsmanClient.cpp intel/src/
-
+cp ../sdk/Windows/Common/WS-Management/C++/openwsman/src/cpp/OpenWsmanClient.cpp intel/src/
 rm intel/src/cdecode.cpp
 rm intel/src/cencode.cpp
 rm intel/include/cdecode.h

@@ -7,8 +7,21 @@
 
 CC = g++ -std=c++11 -g -fpic -DTHW_TRACE
 #LINK_OPTS = -Wl,--verbose
-INCLUDE = -I$(HOME)/include  -I$(HOME)/include/openwsman -I$(HOME)/include/openwsman/cpp -Ib64 -Iintel/include -Imof/include -ISyncLib/Include
-LIBS =  -L$(HOME)/lib64 -L. -lwsman_clientpp -lwsman -lxerces-c -lxerces-depdom -LSyncLib/lib -lsynclib -lpthread 
+
+#
+# Use System wide openwsman
+
+#OPENWSMAN_CLFAGS = $(shell pkg-config --cflags openwsman++)
+#OPENWSMAN_LIBS = $(shell pkg-config --libs openwsman++)
+#
+# Private openwsman library
+
+OPENWSMAN_CLFAGS = -I$(HOME)/include/openwsman -I$(HOME)/include/openwsman/cpp
+OPENWSMAN_LIBS = -L$(HOME)/lib64 -lwsman_clientpp -lwsman -lwsman_client
+
+
+INCLUDE =   $(OPENWSMAN_CLFAGS) -Ilibb64 -Iintel/include -Imof/include -ISyncLib/Include
+LIBS =  -L. $(OPENWSMAN_LIBS) -lxerces-c -lxerces-depdom  -lpthread 
 
 AMTLIB = libamt.so.11
 
@@ -302,12 +315,20 @@ INTEL_OBJECTS = intel/src/CimAnonymous.o \
 		intel/src/XMLUtils_XRCS.o
 		
 
+SYNCLIB_OBJECTS = SyncLib/src/EventLinux.o \
+		  SyncLib/src/RWLock.o \
+		  SyncLib/src/SemaphoreLinux.o \
+		  SyncLib/src/ThreadLinux.o \
+		  SyncLib/src/Timer.o \
+		  SyncLib/src/TimerManager.o 
+
 OBJECTS = test.o 
 
-b64 = b64/cdecode.o b64/cencode.o
+b64 = libb64/cdecode.o libb64/cencode.o
 
-$(AMTLIB): $(AMT_OBJECTS) $(INTEL_OBJECTS) $(b64)
-	$(CC) -shared -Wl,-soname,$(AMTLIB) -o $(AMTLIB) $(AMT_OBJECTS) $(INTEL_OBJECTS) $(b64)
+$(AMTLIB): $(AMT_OBJECTS) $(INTEL_OBJECTS) $(b64) $(SYNCLIB_OBJECTS)
+	$(CC) -shared -Wl,-soname,$(AMTLIB) -o $(AMTLIB) $(AMT_OBJECTS) $(INTEL_OBJECTS) $(b64) $(SYNCLIB_OBJECTS)
+	ln -fs $(AMTLIB) libamt.so
 	touch libamt.so
 
 
@@ -316,7 +337,10 @@ amttest: $(AMTLIB) $(OBJECTS)
 
 .PHONY:
 clean:
-		-\rm $(OBJECTS) $(b64) 
+		-\rm $(OBJECTS)
 		-\rm $(AMT_OBJECTS) 
 		-\rm $(INTEL_OBJECTS)
+		-\rm $(b64)
+		-\rm $(SYNCLIB_OBJECTS)
 		-\rm amttest
+		-\rm libamt.so

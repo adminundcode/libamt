@@ -5,3 +5,4 @@ build/
 SyncLib/
 intel/
 mof/
+.pc/
