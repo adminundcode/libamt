@@ -1,0 +1,491 @@
+Index: libamt/intel/src/CimBase.cpp
+===================================================================
+--- libamt.orig/intel/src/CimBase.cpp
++++ libamt/intel/src/CimBase.cpp
+@@ -10,7 +10,8 @@
+ 
+ #include "CimBase.h"
+ #include "CimSerializer.h"
+-#include <afxmt.h>
++
++#include <pthread.h>
+ 
+ namespace Intel
+ {
+@@ -289,10 +290,12 @@ namespace Intel
+ 				{	
+ 					// race condition because of static vector<CimFieldAttribute> being populated from multiple threads
+ 					// caused crash in RCS. 
+-					static CCriticalSection section;
+-					try{
+-						section.Lock();
++					// Windows: static CCriticalSection section;
++                                        pthread_mutex_t cs_mutex =  PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+ 
++					try{
++						//section.Lock();
++                                                pthread_mutex_lock( &cs_mutex );
+ 
+ 						for (int i = 0; i < count; i++)
+ 						{
+@@ -313,7 +316,9 @@ namespace Intel
+ 						}
+ 					}
+ 					catch(int e){}
+-					section.Unlock();
++					//section.Unlock();
++                                        pthread_mutex_unlock( &cs_mutex );
++
+ 				}
+ 
+ 				CimObject CimBase::GetUnTyped() const
+Index: libamt/intel/src/CimOpenWsmanClient.cpp
+===================================================================
+--- libamt.orig/intel/src/CimOpenWsmanClient.cpp
++++ libamt/intel/src/CimOpenWsmanClient.cpp
+@@ -10,8 +10,10 @@
+ 
+ #include "CimException.h"
+ #include "CimOpenWsmanClient.h"
+-#include "openwsmanclient.h"
++#include <OpenWsmanClient.h>
++#include <WsmanEPR.h>
+ 
++#include <cstring>
+ 
+ using namespace std;
+ 
+@@ -104,12 +106,14 @@ namespace WSManagement
+ 					connection.authmethod == DIGEST ? "digest" : "gss",
+ 					connection.username.c_str(),
+ 					connection.password.c_str(),
+-					connection.proxy_host == "" ? NULL : connection.proxy_host.c_str(),
+-					connection.proxy_user == "" ? NULL : connection.proxy_user.c_str(),
+-					connection.proxy_password == "" ? NULL : connection.proxy_password.c_str(),					
+-					connection.certificate == "" ? NULL : connection.certificate.c_str(),
++					connection.proxy_host.empty () ? NULL : connection.proxy_host.c_str(),
++					connection.proxy_user.empty () ? NULL : connection.proxy_user.c_str(),
++					connection.proxy_password.empty () ? NULL : connection.proxy_password.c_str()
++#ifdef _WIN32                                        
++                                        ,connection.certificate == "" ? NULL : connection.certificate.c_str(),
+ 					connection.oid == "" ? NULL : connection.oid.c_str(),
+ 					connection.local
++#endif                                        
+ 					);
+ 		}
+ 		catch(GeneralWsmanException &ex)
+@@ -311,7 +315,7 @@ namespace WSManagement
+ 			nvp.insert(pair<string, string>(iter->first, iter->second));
+ 		}
+ 
+-		WsmanClientNamespace::EnumerateOptions opts = WsmanClientNamespace::ENUM_OBJECTS;
++		//WsmanClientNamespace::EnumerateOptions opts = WsmanClientNamespace::ENUM_OBJECTS;
+ 		try
+ 		{
+ 
+@@ -329,14 +333,22 @@ namespace WSManagement
+ 				resultRole = filter.resultRole;
+ 				resultProp = filter.resultProperties;
+ 			
+-				WsmanFilter filter(& epr, assocType,
++				/*WsmanFilter filter(& epr, assocType,
+ 					assocClass.empty() ? NULL : & assocClass,
+ 					resultClass.empty() ? NULL : & resultClass,
+ 					role.empty() ? NULL : & role,
+ 					resultRole.empty() ? NULL : & resultRole,
+-						& resultProp);
++						& resultProp);*/
++                                
++                                WsmanFilter filter( epr, assocType,
++					assocClass,
++					resultClass.empty() ? string() :  resultClass,
++					role.empty() ? string() : role,
++					resultRole.empty() ? string() : resultRole,
++					resultProp);
++
+ 
+-				cl->Enumerate(enumerateURI, filter, enumRes, opts);
++				cl->Enumerate(enumerateURI, filter, enumRes /*, opts*/ );
+ 			}
+ 		}
+ 		catch (WsmanSoapFault &ex)
+@@ -373,14 +385,14 @@ namespace WSManagement
+ 			nvp.insert(pair<string, string>(iter->first, iter->second));
+ 		}
+ 
+-		WsmanClientNamespace::EnumerateOptions opts = WsmanClientNamespace::ENUM_EPR;
++		//WsmanClientNamespace::EnumerateOptions opts = WsmanClientNamespace::ENUM_EPR;
+ 
+ 		try
+ 		{
+ 			if (filter.assocType == Intel::WSManagement::EnumerateFilter::AllInstances)
+ 			{			
+ 					WsmanFilter empty_filter;
+-					cl->Enumerate(filter.reference.ResourceURI(), empty_filter, enumRes, opts);			
++					cl->Enumerate(filter.reference.ResourceURI(), empty_filter, enumRes /*, opts */);			
+ 			}
+ 			else
+ 			{
+@@ -392,14 +404,22 @@ namespace WSManagement
+ 				resultRole = filter.resultRole;
+ 				resultProp = filter.resultProperties;
+ 			
+-				WsmanFilter filter(& epr, assocType,
++				/* WsmanFilter filter(& epr, assocType,
+ 					assocClass.empty() ? NULL : & assocClass,
+ 					resultClass.empty() ? NULL : & resultClass,
+ 					role.empty() ? NULL : & role,
+ 					resultRole.empty() ? NULL : & resultRole,
+ 						& resultProp);
++                                */
++                                WsmanFilter filter( epr, assocType,
++					assocClass,
++					resultClass.empty() ? string() :  resultClass,
++					role.empty() ? string() : role,
++					resultRole.empty() ? string() : resultRole,
++					resultProp);
++
+ 
+-				cl->Enumerate(enumerateURI, filter, enumRes, opts);
++				cl->Enumerate(enumerateURI, filter, enumRes /*, opts*/ );
+ 			}
+ 		}
+ 		catch (WsmanSoapFault &ex)
+Index: libamt/mof/include/AMT_ActiveFilterStatistics.h
+===================================================================
+--- libamt.orig/mof/include/AMT_ActiveFilterStatistics.h
++++ libamt/mof/include/AMT_ActiveFilterStatistics.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef AMT_ACTIVEFILTERSTATISTICS_H
+ #define AMT_ACTIVEFILTERSTATISTICS_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_AbstractIndicationSubscription.h
+===================================================================
+--- libamt.orig/mof/include/CIM_AbstractIndicationSubscription.h
++++ libamt/mof/include/CIM_AbstractIndicationSubscription.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ABSTRACTINDICATIONSUBSCRIPTION_H
+ #define CIM_ABSTRACTINDICATIONSUBSCRIPTION_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_AssignedIdentity.h
+===================================================================
+--- libamt.orig/mof/include/CIM_AssignedIdentity.h
++++ libamt/mof/include/CIM_AssignedIdentity.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ASSIGNEDIDENTITY_H
+ #define CIM_ASSIGNEDIDENTITY_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_AssociatedPrivilege.h
+===================================================================
+--- libamt.orig/mof/include/CIM_AssociatedPrivilege.h
++++ libamt/mof/include/CIM_AssociatedPrivilege.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ASSOCIATEDPRIVILEGE_H
+ #define CIM_ASSOCIATEDPRIVILEGE_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_Component.h
+===================================================================
+--- libamt.orig/mof/include/CIM_Component.h
++++ libamt/mof/include/CIM_Component.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_COMPONENT_H
+ #define CIM_COMPONENT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_CredentialContext.h
+===================================================================
+--- libamt.orig/mof/include/CIM_CredentialContext.h
++++ libamt/mof/include/CIM_CredentialContext.h
+@@ -12,7 +12,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_CREDENTIALCONTEXT_H
+ #define CIM_CREDENTIALCONTEXT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_Dependency.h
+===================================================================
+--- libamt.orig/mof/include/CIM_Dependency.h
++++ libamt/mof/include/CIM_Dependency.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_DEPENDENCY_H
+ #define CIM_DEPENDENCY_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_ElementCapabilities.h
+===================================================================
+--- libamt.orig/mof/include/CIM_ElementCapabilities.h
++++ libamt/mof/include/CIM_ElementCapabilities.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ELEMENTCAPABILITIES_H
+ #define CIM_ELEMENTCAPABILITIES_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_ElementConformsToProfile.h
+===================================================================
+--- libamt.orig/mof/include/CIM_ElementConformsToProfile.h
++++ libamt/mof/include/CIM_ElementConformsToProfile.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ELEMENTCONFORMSTOPROFILE_H
+ #define CIM_ELEMENTCONFORMSTOPROFILE_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_ElementLocation.h
+===================================================================
+--- libamt.orig/mof/include/CIM_ElementLocation.h
++++ libamt/mof/include/CIM_ElementLocation.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ELEMENTLOCATION_H
+ #define CIM_ELEMENTLOCATION_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_ElementSettingData.h
+===================================================================
+--- libamt.orig/mof/include/CIM_ElementSettingData.h
++++ libamt/mof/include/CIM_ElementSettingData.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ELEMENTSETTINGDATA_H
+ #define CIM_ELEMENTSETTINGDATA_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_ElementStatisticalData.h
+===================================================================
+--- libamt.orig/mof/include/CIM_ElementStatisticalData.h
++++ libamt/mof/include/CIM_ElementStatisticalData.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ELEMENTSTATISTICALDATA_H
+ #define CIM_ELEMENTSTATISTICALDATA_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_Error.h
+===================================================================
+--- libamt.orig/mof/include/CIM_Error.h
++++ libamt/mof/include/CIM_Error.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ERROR_H
+ #define CIM_ERROR_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_Indication.h
+===================================================================
+--- libamt.orig/mof/include/CIM_Indication.h
++++ libamt/mof/include/CIM_Indication.h
+@@ -13,7 +13,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_INDICATION_H
+ #define CIM_INDICATION_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_InstalledSoftwareIdentity.h
+===================================================================
+--- libamt.orig/mof/include/CIM_InstalledSoftwareIdentity.h
++++ libamt/mof/include/CIM_InstalledSoftwareIdentity.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_INSTALLEDSOFTWAREIDENTITY_H
+ #define CIM_INSTALLEDSOFTWAREIDENTITY_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_LogManagesRecord.h
+===================================================================
+--- libamt.orig/mof/include/CIM_LogManagesRecord.h
++++ libamt/mof/include/CIM_LogManagesRecord.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_LOGMANAGESRECORD_H
+ #define CIM_LOGMANAGESRECORD_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_ManagedElement.h
+===================================================================
+--- libamt.orig/mof/include/CIM_ManagedElement.h
++++ libamt/mof/include/CIM_ManagedElement.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_MANAGEDELEMENT_H
+ #define CIM_MANAGEDELEMENT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_MemberOfCollection.h
+===================================================================
+--- libamt.orig/mof/include/CIM_MemberOfCollection.h
++++ libamt/mof/include/CIM_MemberOfCollection.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_MEMBEROFCOLLECTION_H
+ #define CIM_MEMBEROFCOLLECTION_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_OwningCollectionElement.h
+===================================================================
+--- libamt.orig/mof/include/CIM_OwningCollectionElement.h
++++ libamt/mof/include/CIM_OwningCollectionElement.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_OWNINGCOLLECTIONELEMENT_H
+ #define CIM_OWNINGCOLLECTIONELEMENT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_OwningJobElement.h
+===================================================================
+--- libamt.orig/mof/include/CIM_OwningJobElement.h
++++ libamt/mof/include/CIM_OwningJobElement.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_OWNINGJOBELEMENT_H
+ #define CIM_OWNINGJOBELEMENT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_PolicySetAppliesToElement.h
+===================================================================
+--- libamt.orig/mof/include/CIM_PolicySetAppliesToElement.h
++++ libamt/mof/include/CIM_PolicySetAppliesToElement.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_POLICYSETAPPLIESTOELEMENT_H
+ #define CIM_POLICYSETAPPLIESTOELEMENT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_RoleLimitedToTarget.h
+===================================================================
+--- libamt.orig/mof/include/CIM_RoleLimitedToTarget.h
++++ libamt/mof/include/CIM_RoleLimitedToTarget.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_ROLELIMITEDTOTARGET_H
+ #define CIM_ROLELIMITEDTOTARGET_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_SAPAvailableForElement.h
+===================================================================
+--- libamt.orig/mof/include/CIM_SAPAvailableForElement.h
++++ libamt/mof/include/CIM_SAPAvailableForElement.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_SAPAVAILABLEFORELEMENT_H
+ #define CIM_SAPAVAILABLEFORELEMENT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_ServiceAffectsElement.h
+===================================================================
+--- libamt.orig/mof/include/CIM_ServiceAffectsElement.h
++++ libamt/mof/include/CIM_ServiceAffectsElement.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_SERVICEAFFECTSELEMENT_H
+ #define CIM_SERVICEAFFECTSELEMENT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_ServiceAvailableToElement.h
+===================================================================
+--- libamt.orig/mof/include/CIM_ServiceAvailableToElement.h
++++ libamt/mof/include/CIM_ServiceAvailableToElement.h
+@@ -11,7 +11,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_SERVICEAVAILABLETOELEMENT_H
+ #define CIM_SERVICEAVAILABLETOELEMENT_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
+Index: libamt/mof/include/CIM_SettingsDefineState.h
+===================================================================
+--- libamt.orig/mof/include/CIM_SettingsDefineState.h
++++ libamt/mof/include/CIM_SettingsDefineState.h
+@@ -12,7 +12,7 @@
+ //----------------------------------------------------------------------------
+ #ifndef CIM_SETTINGSDEFINESTATE_H
+ #define CIM_SETTINGSDEFINESTATE_H 1
+-#include "../../include/CimBase.h"
++#include "CimBase.h"
+ namespace Intel
+ {
+ namespace Manageability
