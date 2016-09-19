@@ -63,9 +63,9 @@ Index: libamt/intel/src/CimOpenWsmanClient.cpp
 -					connection.proxy_user == "" ? NULL : connection.proxy_user.c_str(),
 -					connection.proxy_password == "" ? NULL : connection.proxy_password.c_str(),					
 -					connection.certificate == "" ? NULL : connection.certificate.c_str(),
-+					connection.proxy_host.empty () ? NULL : connection.proxy_host.c_str(),
-+					connection.proxy_user.empty () ? NULL : connection.proxy_user.c_str(),
-+					connection.proxy_password.empty () ? NULL : connection.proxy_password.c_str()
++					connection.proxy_host.c_str(),
++					connection.proxy_user.c_str(),
++					connection.proxy_password.c_str()
 +#ifdef _WIN32                                        
 +                                        ,connection.certificate == "" ? NULL : connection.certificate.c_str(),
  					connection.oid == "" ? NULL : connection.oid.c_str(),

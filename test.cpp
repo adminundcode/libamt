@@ -80,6 +80,7 @@ int main (int argc, char* argv[])
    if (argc != 4) {
        cout << "Wrong number of arguments" << endl;
        cout << "Usage: amttest host user password" << endl;
+       exit (1);
    }
    
    string host = string (argv[1]);
