@@ -19,9 +19,12 @@ CC = g++ -std=c++11 -g -fpic -DTHW_TRACE
 OPENWSMAN_CLFAGS = -I$(HOME)/include/openwsman -I$(HOME)/include/openwsman/cpp
 OPENWSMAN_LIBS = -L$(HOME)/lib64 -lwsman_clientpp -lwsman -lwsman_client
 
+XERCES_CFLAGS = $(shell pkg-config --cflags xerces-c)
+XERCES_LIBS = $(shell pkg-config --libs xerces-c)
+
 
 INCLUDE =   $(OPENWSMAN_CLFAGS) -Ilibb64 -Iintel/include -Imof/include -ISyncLib/Include
-LIBS =  -L. $(OPENWSMAN_LIBS) -lxerces-c -lxerces-depdom  -lpthread 
+LIBS =  -L. $(OPENWSMAN_LIBS) $(XERCES_LIBS)
 
 AMTLIB = libamt.so.11
 
