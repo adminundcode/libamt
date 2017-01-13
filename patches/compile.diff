@@ -39,118 +39,6 @@ Index: libamt/intel/src/CimBase.cpp
  				}
  
  				CimObject CimBase::GetUnTyped() const
-Index: libamt/intel/src/CimOpenWsmanClient.cpp
-===================================================================
---- libamt.orig/intel/src/CimOpenWsmanClient.cpp
-+++ libamt/intel/src/CimOpenWsmanClient.cpp
-@@ -10,8 +10,10 @@
- 
- #include "CimException.h"
- #include "CimOpenWsmanClient.h"
--#include "openwsmanclient.h"
-+#include <OpenWsmanClient.h>
-+#include <WsmanEPR.h>
- 
-+#include <cstring>
- 
- using namespace std;
- 
-@@ -104,12 +106,14 @@ namespace WSManagement
- 					connection.authmethod == DIGEST ? "digest" : "gss",
- 					connection.username.c_str(),
- 					connection.password.c_str(),
--					connection.proxy_host == "" ? NULL : connection.proxy_host.c_str(),
--					connection.proxy_user == "" ? NULL : connection.proxy_user.c_str(),
--					connection.proxy_password == "" ? NULL : connection.proxy_password.c_str(),					
--					connection.certificate == "" ? NULL : connection.certificate.c_str(),
-+					connection.proxy_host.c_str(),
-+					connection.proxy_user.c_str(),
-+					connection.proxy_password.c_str()
-+#ifdef _WIN32                                        
-+                                        ,connection.certificate == "" ? NULL : connection.certificate.c_str(),
- 					connection.oid == "" ? NULL : connection.oid.c_str(),
- 					connection.local
-+#endif                                        
- 					);
- 		}
- 		catch(GeneralWsmanException &ex)
-@@ -311,7 +315,7 @@ namespace WSManagement
- 			nvp.insert(pair<string, string>(iter->first, iter->second));
- 		}
- 
--		WsmanClientNamespace::EnumerateOptions opts = WsmanClientNamespace::ENUM_OBJECTS;
-+		//WsmanClientNamespace::EnumerateOptions opts = WsmanClientNamespace::ENUM_OBJECTS;
- 		try
- 		{
- 
-@@ -329,14 +333,22 @@ namespace WSManagement
- 				resultRole = filter.resultRole;
- 				resultProp = filter.resultProperties;
- 			
--				WsmanFilter filter(& epr, assocType,
-+				/*WsmanFilter filter(& epr, assocType,
- 					assocClass.empty() ? NULL : & assocClass,
- 					resultClass.empty() ? NULL : & resultClass,
- 					role.empty() ? NULL : & role,
- 					resultRole.empty() ? NULL : & resultRole,
--						& resultProp);
-+						& resultProp);*/
-+                                
-+                                WsmanFilter filter( epr, assocType,
-+					assocClass,
-+					resultClass.empty() ? string() :  resultClass,
-+					role.empty() ? string() : role,
-+					resultRole.empty() ? string() : resultRole,
-+					resultProp);
-+
- 
--				cl->Enumerate(enumerateURI, filter, enumRes, opts);
-+				cl->Enumerate(enumerateURI, filter, enumRes /*, opts*/ );
- 			}
- 		}
- 		catch (WsmanSoapFault &ex)
-@@ -373,14 +385,14 @@ namespace WSManagement
- 			nvp.insert(pair<string, string>(iter->first, iter->second));
- 		}
- 
--		WsmanClientNamespace::EnumerateOptions opts = WsmanClientNamespace::ENUM_EPR;
-+		//WsmanClientNamespace::EnumerateOptions opts = WsmanClientNamespace::ENUM_EPR;
- 
- 		try
- 		{
- 			if (filter.assocType == Intel::WSManagement::EnumerateFilter::AllInstances)
- 			{			
- 					WsmanFilter empty_filter;
--					cl->Enumerate(filter.reference.ResourceURI(), empty_filter, enumRes, opts);			
-+					cl->Enumerate(filter.reference.ResourceURI(), empty_filter, enumRes /*, opts */);			
- 			}
- 			else
- 			{
-@@ -392,14 +404,22 @@ namespace WSManagement
- 				resultRole = filter.resultRole;
- 				resultProp = filter.resultProperties;
- 			
--				WsmanFilter filter(& epr, assocType,
-+				/* WsmanFilter filter(& epr, assocType,
- 					assocClass.empty() ? NULL : & assocClass,
- 					resultClass.empty() ? NULL : & resultClass,
- 					role.empty() ? NULL : & role,
- 					resultRole.empty() ? NULL : & resultRole,
- 						& resultProp);
-+                                */
-+                                WsmanFilter filter( epr, assocType,
-+					assocClass,
-+					resultClass.empty() ? string() :  resultClass,
-+					role.empty() ? string() : role,
-+					resultRole.empty() ? string() : resultRole,
-+					resultProp);
-+
- 
--				cl->Enumerate(enumerateURI, filter, enumRes, opts);
-+				cl->Enumerate(enumerateURI, filter, enumRes /*, opts*/ );
- 			}
- 		}
- 		catch (WsmanSoapFault &ex)
 Index: libamt/mof/include/AMT_ActiveFilterStatistics.h
 ===================================================================
 --- libamt.orig/mof/include/AMT_ActiveFilterStatistics.h
@@ -489,3 +377,42 @@ Index: libamt/mof/include/CIM_SettingsDefineState.h
  namespace Intel
  {
  namespace Manageability
+Index: libamt/intel/src/CimOpenWsmanClient.cpp
+===================================================================
+--- libamt.orig/intel/src/CimOpenWsmanClient.cpp
++++ libamt/intel/src/CimOpenWsmanClient.cpp
+@@ -10,9 +10,11 @@
+ 
+ #include "CimException.h"
+ #include "CimOpenWsmanClient.h"
+-#include "openwsmanclient.h"
++#include <OpenWsmanClient.h>
++#include <WsmanEPR.h>
+ #include "WsmanEPR.h"
+ #include "WsmanFilter.h"
++#include <cstring>
+ 
+ using namespace std;
+ 
+@@ -107,11 +109,16 @@ namespace WSManagement
+ 					connection.password.c_str(),
+ 					connection.proxy_host,
+ 					connection.proxy_user,
+-					connection.proxy_password,
+-					connection.local,
+-					connection.certificate,
+-					connection.oid				
+-					);
++					connection.proxy_password
++#ifdef _WIN32                                        
++                                        ,connection.certificate == "" ? NULL : connection.certificate.c_str(),
++                                        connection.oid == "" ? NULL : connection.oid.c_str(),
++                                        connection.local
++#endif                                         
++                                        );
++                                        
++                                        
++                                        
+ 		}
+ 		catch(GeneralWsmanException &ex)
+ 		{
