@@ -2,20 +2,20 @@ Index: libamt/intel/src/XMLUtils_XRCS.cpp
 ===================================================================
 --- libamt.orig/intel/src/XMLUtils_XRCS.cpp
 +++ libamt/intel/src/XMLUtils_XRCS.cpp
-@@ -13,7 +13,8 @@
+@@ -13,7 +13,7 @@
  #include <xercesc/util/PlatformUtils.hpp>
  #include <xercesc/util/XMLString.hpp>
  #include <xercesc/dom/DOM.hpp>
 -#include <xercesc/dom/DOMWriter.hpp>
-+//#include <xercesc/dom/DOMWriter.hpp>
 +#include <xercesc/dom/DOMLSSerializer.hpp>
  #include <xercesc/dom/DOMImplementationRegistry.hpp>
  #include <xercesc/dom/DOMImplementationLS.hpp>
  #include <xercesc/util/OutOfMemoryException.hpp>
-@@ -23,6 +24,8 @@
+@@ -23,6 +23,9 @@
  #include <xercesc/util/XMLUni.hpp>
  #include <xercesc/framework/MemBufFormatTarget.hpp>
  
++
 +#include <iostream>
 +
  XERCES_CPP_NAMESPACE_USE
@@ -30,9 +30,18 @@ Index: libamt/intel/src/XMLUtils_XRCS.cpp
  	public:
  		XMLElementImpl(DOMElement* element)
  		{
-@@ -483,21 +486,22 @@ namespace XMLUtils
+@@ -478,26 +481,31 @@ namespace XMLUtils
+ 
+ 		string ToString(bool incRoot = false) const
+ 		{
++            //cout << "XMLElementImpl::ToString " << incRoot << endl;
++            //cout << "GetTextValue (): " << GetTextValue () << endl;
+ 			if(!incRoot && IsLeafNode())
+ 			{
  				return GetTextValue();
  			}
++            
++            
  			string xml = "";
 -			DOMWriter* writer = NULL;
 +			DOMLSSerializer* writer = NULL;
@@ -58,7 +67,7 @@ Index: libamt/intel/src/XMLUtils_XRCS.cpp
  					}
  					else
  					{
-@@ -505,10 +509,12 @@ namespace XMLUtils
+@@ -505,10 +513,12 @@ namespace XMLUtils
  						{
  							if(child->getNodeType() == DOMNode::ELEMENT_NODE)
  							{
@@ -73,11 +82,18 @@ Index: libamt/intel/src/XMLUtils_XRCS.cpp
  					}
  				}
  			}
-@@ -781,23 +787,30 @@ namespace XMLUtils
+@@ -780,25 +790,48 @@ namespace XMLUtils
+ 
  		string ToString(bool incVersionStr = false)
  		{
- 			string xml;
+-			string xml;
 -			DOMWriter* writer = NULL;
++            cout << "XMLElementImpl::toString " << incVersionStr << endl;
++            
++            //cout << doc->getNodeValue () << endl;
++            
++            string result; 
++			const XMLByte* xml;
 +			DOMLSSerializer* writer = NULL;
  			XMLFormatTarget* dest = NULL;
  			try
@@ -85,28 +101,56 @@ Index: libamt/intel/src/XMLUtils_XRCS.cpp
  				XStr xstr1, xstr2;
  				DOMImplementation* impl =  DOMImplementationRegistry::getDOMImplementation(xstr1.X("LS"));							
 -				writer = ((DOMImplementationLS*)impl)->createDOMWriter();
-+				writer = ((DOMImplementationLS*)impl)->createLSSerializer();
-+                DOMConfiguration* dc = writer->getDomConfig(); 
-+                //dc->setParameter(XMLUni::fgDOMErrorHandler,errorHandler); 
-+                dc->setParameter(XMLUni::fgDOMWRTDiscardDefaultContent,true);
-+                
- 				if(writer)
- 				{
- 					dest = new MemBufFormatTarget();
+-				if(writer)
+-				{
+-					dest = new MemBufFormatTarget();
 -					writer->setEncoding(xstr2.X("UTF-8"));
-+					//writer->setEncoding(xstr2.X("UTF-8"));
- 					if(!incVersionStr)
- 					{
+-					if(!incVersionStr)
+-					{
 -						writer->setFeature(XMLUni::fgDOMXMLDeclaration, false);
-+						//writer->setFeature(XMLUni::fgDOMXMLDeclaration, false);
- 					}
+-					}
 -					writer->writeNode(dest, *doc);
 -					xml = (char*)((MemBufFormatTarget*)dest)->getRawBuffer();
-+					//writer->writeNode(dest, *doc);
-+					//xml = (char*)((MemBufFormatTarget*)dest)->getRawBuffer();
-+                    xml = (char*)writer->writeToString (doc);
+-				}
++				writer = ((DOMImplementationLS*)impl)->createLSSerializer();
++                DOMLSOutput* theOutput = ((DOMImplementationLS*)impl)->createLSOutput();
++                
++                //DOMConfiguration* dc = writer->getDomConfig(); 
++                //dc->setParameter(XMLUni::fgDOMErrorHandler,errorHandler); 
++                //dc->setParameter(XMLUni::fgDOMWRTDiscardDefaultContent,true);
++ 
++ 				if(writer)
++				{
++					//writer->setEncoding(xstr2.X("UTF-8"));
++					//if(!incVersionStr)
++					//{
++                    //    writer->setFeature(XMLUni::fgDOMXMLDeclaration, false);
++					//}
++
++                    auto pTarget = new MemBufFormatTarget();
++                    theOutput->setByteStream (pTarget);
++					
++                    writer->write (doc, theOutput);
++                    xml = pTarget->getRawBuffer();
 +                    
-+                    cout << "ToString: " << xml << endl;
- 				}
++                    result = string ((char*) xml);
++                    //cout << "ToString: " << xml << endl << result << endl;
++                    
++                    delete pTarget;
++                }
++                
++                theOutput->release ();
++                
++                
  			}
  			catch (XMLException& e)
+ 			{
+@@ -832,7 +865,7 @@ namespace XMLUtils
+ 			{
+ 				delete dest;
+ 			}
+-			return xml;
++			return result;
+ 		}
+ 	private:
+ 		XMLDocImpl(const XMLDocImpl& other){}
