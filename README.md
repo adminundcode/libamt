@@ -47,6 +47,25 @@ This is done by the copy_files.sh shell scirpt.
 Along the normal C++ compiler, you we use the system libwsman and 
 libxerces packages.
 
-apt-get install libopenwsman-dev libwsman-clientpp-dev libxerces-c-dev
+ apt-get install libopenwsman-dev libwsman-clientpp-dev libxerces-c-dev
+
+ apt-get install quilt 
+
+## Patch Intel Code with quilt
+
+There are 2 patches. The first one patches the AMT classes to make 
+the code compilable. This are mostly changes to the include path. 
+The Intel code contains 2 calls which are Windows specific. They have
+been translatet to Linux. 
+
+The second patch aplies changes to support Libxerces3. The old once 
+which Intel uses is out of support for years and no longer available 
+in Ubuntu.
+
+Apply all patches:
+
+ quilt push -a
+
+After that the code can be compiled with 'make'.
 
 
