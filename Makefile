@@ -17,7 +17,7 @@ CC = g++ -std=c++11 -g -fpic -DTHW_TRACE
 # Private openwsman library
 
 OPENWSMAN_CLFAGS = -I$(HOME)/include/openwsman -I$(HOME)/include/openwsman/cpp
-OPENWSMAN_LIBS = -L$(HOME)/lib64 -lwsman_clientpp -lwsman -lwsman_client
+OPENWSMAN_LIBS = -L$(HOME)/lib64 -lwsman_clientpp -lwsman_curl_client_transport -lwsman -lwsman_client
 
 XERCES_CFLAGS = $(shell pkg-config --cflags xerces-c)
 XERCES_LIBS = $(shell pkg-config --libs xerces-c)
