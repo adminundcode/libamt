@@ -5,7 +5,7 @@
 
 # -DTHW_TRACE include call and paramter tracing for understanding wsman stuff
 
-CC = g++ -std=c++11 -g -fpic -DTHW_TRACE
+CC = g++ -std=c++14 -g -fpic -DTHW_TRACE
 #LINK_OPTS = -Wl,--verbose
 
 #
