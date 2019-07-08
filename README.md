@@ -15,7 +15,7 @@ For creating own software Intel offers an SDK.
 This SDK contains Code for Windows and Linux. 
 Sadly, the Linux code is much older and does not utilize modern C++
 code. Most of the code is pure C++ code. Why do not try to compile
-this on Linux. This is the result and gole of this project.
+this on Linux? This is the result and goal of this project.
 
 ## Get the AMT SDK
 
@@ -44,8 +44,12 @@ This is done by the copy_files.sh shell scirpt.
 
 ## Install dependencies
 
-Along the normal C++ compiler, you we use the system libwsman and 
+Along the normal C++ compiler, you use the system libwsman and 
 libxerces packages.
+
+This requieres openwsman > 2.5. This is fullfilled by Ubuntu 18.04 
+and above. For Ubuntu 16.04 you need to compile openwsman by yourself.
+See my blog adminundcode.de for instructions.
 
  apt-get install libopenwsman-dev libwsman-clientpp-dev libxerces-c-dev
 
