@@ -104,27 +104,30 @@ int main (int argc, char* argv[])
    //CimClass::RegisterDefaultWsmanProvider (owc);
 
 
+    // Get One field of the class
     CIM_SoftwareIdentity si(owc);
     si.InstanceID ("AMT FW Core Version");
     si.Get ();
     cout << "Core Version   : " << si.VersionString () << endl;
-
+    
 
     AMT_GeneralSettings gs(owc);
     gs.Get ();
     cout << "AMT Hostname   : " << gs.HostName () << endl;
     cout << "Domain Name    : " << gs.DomainName () << endl;
     cout << "Ping Response  : " << gs.PingResponseEnabled () << endl;
-    
        
-    
+    // Get all fields of the class
     //vector<shared_ptr<CIM_SoftwareIdentity> > 
     auto siVector = si.Enumerate (owc);
         
+    //cout << "Build Number   : " << si.ElementName () << endl;
+
+
     for(unsigned int i = 0; i < siVector.size(); i++) {
          CIM_SoftwareIdentity *tmp = (CIM_SoftwareIdentity*)siVector[i].get();
-         cout << siVector[i]->VersionString () << endl;
-//       cout << i << " " << tmp.InstanceID () << ": " << tmp->VersionString () << endl;
+         //cout << siVector[i]->VersionString () << endl;
+       cout << i << " " << tmp->InstanceID () << ": " << tmp->VersionString () << endl;
 //       cout << i << " " << siVector[i]->InstanceID << ": " << siVector[i].VersionString.c_str() << endl;
 //       if(0 == siVector[i].InstanceID.compare("AMT FW Core Version")) {
 //	    cout << "AMT FW Core Version: " << siVector[i].VersionString.c_str() << endl << endl;                         
@@ -239,7 +242,7 @@ int main (int argc, char* argv[])
     
     // power.RequestPowerStateChange (pwrin, pwrout);
 
-    //cout << computerSystem.Serialize () << endl;
+    // cout << computerSystem.Serialize () << endl;
 
     delete owc;
 			
